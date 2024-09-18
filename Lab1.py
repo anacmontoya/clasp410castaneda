@@ -2,7 +2,8 @@
 
 '''
 This file contains tools and scripts for completing Lab 1 for CLaSP 410.
-To reproduce the plots shown in the lab report, do this...
+To reproduce the plots shown in the lab report, uncomment lines after each
+exploring function.
 '''
 
 import numpy as np
@@ -522,38 +523,31 @@ def explore_fatalrate(ntrials=5):
     ax1.tick_params(axis='y', labelcolor=color)
 
     # Plot Healthy Percentage left vs Prob. of propagation
-    # Second plot shares X-axis with first plot
-    ax2 = ax1.twinx()
-
+    ax2 = ax1.twinx() # Second plot shares X-axis with first plot
     color_healthy = 'tab:green'
     color_immune = 'tab:orange'  # Use a different color for immune people
 
     ax2.set_ylabel('Healthy/Immune after simulation [%]', color=color_healthy, fontsize='medium')
     ax2.scatter(prob, healthy_left_avg, color=color_healthy, label='Healthy People') # Collected data
-    # ax2.plot(prob_fit, healthy_left_avg_fit, color=color_healthy, alpha=alpha)#,
-    #          label=equation_text_2) # Best-fit line
     ax2.plot(prob_fit, immune_left_avg_fit, color=color_immune, alpha=alpha)
     ax2.tick_params(axis='y', labelcolor=color_immune)
-
     ax2.scatter(prob, immune_left_avg, color=color_immune, label='Immune People')
 
     fig.legend(bbox_to_anchor=(0.87,0.95),fontsize='x-small')
 
     # # Create proxy artists for the second legend (best-fit lines)
     proxy_lines = [
-        # Line2D([0], [0], color='tab:blue', lw=2),
-        # Line2D([0], [0], color='tab:green', lw=2),
         Line2D([0], [0], color='tab:orange', lw=2)
     ]
 
     # # Second legend: Best-fit line equations
     second_legend = ax2.legend(proxy_lines, [equation_text_3], loc='upper right',
                                bbox_to_anchor=(1, 0.87), fontsize='x-small', ncol=2)
-    # #                         #title='Fit Equations', ncol=3)
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     # fig.subplots_adjust(right=2)
     plt.show()
 
+# Uncomment to reproduce fig[] in report
 #explore_fatalrate(ntrials=50)
 
 def explore_immunerate(ntrials=2):
@@ -609,7 +603,7 @@ def explore_immunerate(ntrials=2):
 
     # Polyfit for immune line
     g, h = np.polyfit(prob, immune_left_avg, 1) #deg 1
-    equation_text_3 = f'$y = {g:.2f}x^2 + {h:.2f}$' 
+    equation_text_3 = f'$y = {g:.2f}x + {h:.2f}$' 
     immune_left_avg_fit = g * prob_fit + h 
     immune_left_avg_pred = g * prob + h 
     r2 = r2_score(immune_left_avg, immune_left_avg_pred)
