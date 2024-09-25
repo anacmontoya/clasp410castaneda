@@ -182,7 +182,7 @@ ax[1,1].plot(t_comp_eu,N2_comp_eu, color=n2_color)
 ax[1,1].plot(t_comp_rk, N1_comp_rk, ':', color=n1_color)
 ax[1,1].plot(t_comp_rk, N2_comp_rk, ':', color=n2_color)
 ax[1,1].set_xlabel('Time [years]', fontsize='small')
-ax[1,1].set_title('dt=0.5', fontsize='medium')
+ax[1,1].set_title('dt=1', fontsize='medium')
 
 fig.legend(fontsize='small')
 fig.suptitle('Comparison of Euler and RK8 methods with different\n'\
