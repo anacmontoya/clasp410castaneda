@@ -500,6 +500,6 @@ def phase_diagram(a, b, c, d, n1_list, n2_list):
 
 # phase_diagram(a=1, b=1, c=3, d=1, n1_list=[0.4, 0.5, 0.6, 0.7], n2_list=[0.4, 0.5, 0.6, 0.7])
 
-# phase_diagram(a=1, b=3, c=1, d=1, n1_list=[0.4, 0.5, 0.6, 0.7], n2_list=[0.4, 0.5, 0.6, 0.7])
+phase_diagram(a=1, b=3, c=1, d=1, n1_list=[0.4, 0.5, 0.6, 0.7], n2_list=[0.4, 0.5, 0.6, 0.7])
 
 # phase_diagram(a=1, b=1, c=1, d=3, n1_list=[0.4, 0.5, 0.6, 0.7], n2_list=[0.4, 0.5, 0.6, 0.7])
