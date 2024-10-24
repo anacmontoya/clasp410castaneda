@@ -9,18 +9,30 @@ import matplotlib.ticker
 
 plt.style.use('bmh')
 
-# Kangerlussuaq average temperature:
-t_kanger = np.array([-19.7, -21.0, -17., -8.4, 2.3, 8.4,
-                     10.7, 8.5, 3.1, -6.0, -12.0, -16.9])
-def temp_kanger(t): 
+
+def temp_kanger(t, warming=False): 
     '''
     For an array of times in days, return timeseries of temperature for Kangerlussuaq, Greenland.
     '''
+    # Kangerlussuaq average temperature:
+    t_kanger = np.array([-19.7, -21.0, -17., -8.4, 2.3, 8.4,
+                        10.7, 8.5, 3.1, -6.0, -12.0, -16.9])
+    # if warming == True:
+    #     add_values = np.array([0.5, 1, 3])
+    #     t_kanger = t_kanger + add_values[np.arange(len(t_kanger)) % len(add_values)]
+
     t_amp = (t_kanger - t_kanger.mean()).max()
-    return t_amp*np.sin(np.pi/180 * t - np.pi/2) + t_kanger.mean()
+
+    curve = t_amp*np.sin(np.pi/180 * t - np.pi/2) + t_kanger.mean()
+
+    if warming == True:
+        add_values = np.array([0.5, 1, 3])
+        curve = curve + add_values[np.arange(len(curve)) % len(add_values)]
+
+    return curve
 
 
-def heatdiff(xmax, tmax, dx, dt, c2=1, conditions = 'permafrost', debug=True):
+def heatdiff(xmax, tmax, dx, dt, c2=1, conditions = 'permafrost', warming=False, debug=True):
     '''
     Parameters:
     -----------
@@ -56,7 +68,7 @@ def heatdiff(xmax, tmax, dx, dt, c2=1, conditions = 'permafrost', debug=True):
     # Set initial/boundary conditions depending on problem:
     if conditions == 'permafrost':
         # Set boundary conditions:
-        U[0, :] = temp_kanger(tgrid)
+        U[0, :] = temp_kanger(tgrid,warming=warming)
         U[-1, :] = 5
 
     elif conditions == 'wire':
@@ -103,7 +115,7 @@ def plot_wire():
 
 #plot_wire()
 
-def plot_greenland(y,tick_interval):
+def plot_greenland(y,tick_interval, warming=False):
     xmax = 100 # 100 meters
     y = y
     tick_interval = tick_interval # 1 year
@@ -112,7 +124,7 @@ def plot_greenland(y,tick_interval):
     dt=0.5
     c2 = 0.25 * (1/1000)**2 * (86400) # 0.25 mm^2/s covert to m^2/days
 
-    x, t, heat = heatdiff(xmax=xmax, tmax=tmax, dx=dx, dt=dt, c2=c2, conditions='permafrost', debug=False)
+    x, t, heat = heatdiff(xmax=xmax, tmax=tmax, dx=dx, dt=dt, c2=c2, conditions='permafrost', debug=False, warming=warming)
     # Create a figure/axes object
     fig, ax = plt.subplots(1, 1)
     # Create a color map and add a color bar
@@ -120,9 +132,9 @@ def plot_greenland(y,tick_interval):
     plt.colorbar(map, ax=ax, label='Temperature ($C$)')
 
     ax.xaxis.set_major_locator(matplotlib.ticker.MultipleLocator(tick_interval))
-    position_xticks =[tick_interval * i for i in range(0,y+1)]
+    position_xticks = [tick_interval * i for i in range(y // (tick_interval // 365) + 1)]
     ax.set_xticks(position_xticks)
-    ax.set_xticklabels(range(y+1))
+    ax.set_xticklabels([str(i * (tick_interval // 365)) for i in range(y // (tick_interval // 365) + 1)])
     ax.set_xlabel('Years')
 
     ax.set_ylabel('Depth [m]')
@@ -149,6 +161,13 @@ def plot_greenland(y,tick_interval):
     plt.gca().invert_yaxis()
     plt.show()
 
-#plot_greenland(y=5, tick_interval=365)
+# plot_greenland(y=5, tick_interval=365)
 
-plot_greenland(y=5, tick_interval=365)
+# plot_greenland(y=20, tick_interval=365*5)
+
+# plot_greenland(y=50, tick_interval=365*5)
+
+# plot_greenland(y=100, tick_interval=365*10)
+
+
+plot_greenland(y=5, tick_interval=365, warming=True)
