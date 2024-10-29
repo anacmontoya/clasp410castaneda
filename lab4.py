@@ -220,8 +220,6 @@ def plot_greenland(y,tick_interval, warming=False, warming_shift=0.5):
     fig2, ax2 = plt.subplots(1,1)
     ax2.plot(winter, x, label='winter')
     ax2.plot(summer,x, label='summer')
-    ax2.set_ylim(ymax=20, ymin=6)
-    ax2.set_xlim(xmin=-10, xmax=10)
     ax2.set_xlabel('Temperature [C]')
     ax2.set_ylabel('Depth [m]')
     ax2.set_title('Ground Temperature: Kangerlussuaq')
@@ -231,6 +229,7 @@ def plot_greenland(y,tick_interval, warming=False, warming_shift=0.5):
     plt.show()
 
 # Uncomment for figure 2-5:
+
 # plot_greenland(y=5, tick_interval=365)
 
 # plot_greenland(y=20, tick_interval=365*5)
@@ -238,10 +237,6 @@ def plot_greenland(y,tick_interval, warming=False, warming_shift=0.5):
 # plot_greenland(y=50, tick_interval=365*5)
 
 # plot_greenland(y=100, tick_interval=365*10)
-
-# i think these are the ones i did not use:
-# plot_greenland(y=5, tick_interval=365, warming=True, warming_shift=3)
-# plot_greenland(y=5, tick_interval=365)
 
 
 def warming(y, warming_shift=0.5):
