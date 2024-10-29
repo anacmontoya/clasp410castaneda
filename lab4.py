@@ -229,13 +229,11 @@ def plot_greenland(y,tick_interval, warming=False, warming_shift=0.5):
     plt.show()
 
 # Uncomment for figure 2-5:
+# NOTE: each line below returns 2 plots but only the color map was used in final report
 
 # plot_greenland(y=5, tick_interval=365)
-
 # plot_greenland(y=20, tick_interval=365*5)
-
 # plot_greenland(y=50, tick_interval=365*5)
-
 # plot_greenland(y=100, tick_interval=365*10)
 
 
@@ -345,6 +343,7 @@ def warming(y, warming_shift=0.5):
 
 
 # Uncomment for figure 6-8
+
 # warming(50, warming_shift=3)
 # warming(50, warming_shift=1)
 # warming(50, warming_shift=0.5)
