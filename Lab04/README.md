@@ -1,0 +1,1 @@
+This folder contains solution for Lab 04. the file 'lab4.py' contains all the plots shown in the report. Uncomment lines after functions to see results.
