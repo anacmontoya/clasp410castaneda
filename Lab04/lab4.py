@@ -309,33 +309,24 @@ def warming(y, warming_shift=0.5):
 
     #temp profiles for summer and winter
     # plot normal conditions
-    fig, ax = plt.subplots(1,2)
-    ax[0].plot(winter, x, label='winter')
-    ax[0].plot(summer,x, label='summer')
-    ax[0].axhline(y=x[frozen_depth[0][0]], color='black', linestyle='dashed')
-    ax[0].axhline(y=x[thaw_depth[0][0]], linestyle='dashed', color='black')
-    ax[0].text(1, x[frozen_depth[0][0]]+6, f'''Start Permafrost layer:
-                {frozen_depth[0][0]*dx:.2f} m''')
-    ax[0].text(1, x[thaw_depth[0][0]]+6, f'''End Permafrost layer:
-               {thaw_depth[0][0]*dx:.2f} m''')
-    ax[0].set_xlabel('Temperature [C]')
-    ax[0].set_ylabel('Depth [m]')
-    ax[0].set_title('Ground Temperature (Normal Conditions)')
-    ax[0].invert_yaxis() 
+    fig, axes = plt.subplots(1,2)
 
-    #plot warming conditions
-    ax[1].plot(winter_w, x_w)
-    ax[1].plot(summer_w ,x_w)
-    ax[1].axhline(y=x[frozen_depth_w[0][0]], color='black', linestyle='dashed')
-    ax[1].axhline(y=x[thaw_depth_w[0][0]], linestyle='dashed', color='black')
-    ax[1].text(1, x[frozen_depth_w[0][0]]+6, f'''Start Permafrost layer:
-                {frozen_depth_w[0][0]*dx:.2f} m''')
-    ax[1].text(1, x[thaw_depth_w[0][0]]+6, f'''End Permafrost layer:
-               {thaw_depth_w[0][0]*dx:.2f} m''')
-    ax[1].set_xlabel('Temperature [C]')
-    ax[1].set_ylabel('Depth [m]')
-    ax[1].set_title(f'Ground Temperature (Warmer by {warming_shift} deg)')
-    ax[1].invert_yaxis() 
+    for ax in axes:
+
+        ax.plot(winter, x, label='winter')
+        ax.plot(summer,x, label='summer')
+        ax.axhline(y=x[frozen_depth[0][0]], color='black', linestyle='dashed')
+        ax.axhline(y=x[thaw_depth[0][0]], linestyle='dashed', color='black')
+        ax.text(1, x[frozen_depth[0][0]]+6, f'''Start Permafrost layer:
+                    {frozen_depth[0][0]*dx:.2f} m''')
+        ax.text(1, x[thaw_depth[0][0]]+6, f'''End Permafrost layer:
+                {thaw_depth[0][0]*dx:.2f} m''')
+        ax.set_xlabel('Temperature [C]')
+        ax.set_ylabel('Depth [m]')
+        ax.invert_yaxis() 
+
+    axes[0].set_title('Ground Temperature (Normal Conditions)')
+    axes[1].set_title(f'Ground Temperature (Warmer by {warming_shift} deg)')
 
     fig.legend()
 
@@ -344,6 +335,6 @@ def warming(y, warming_shift=0.5):
 
 # Uncomment for figure 6-8
 
-# warming(50, warming_shift=3)
+warming(50, warming_shift=3)
 # warming(50, warming_shift=1)
 # warming(50, warming_shift=0.5)
