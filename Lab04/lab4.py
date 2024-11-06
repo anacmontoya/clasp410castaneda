@@ -8,10 +8,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker
 
-plt.style.use('bmh')
+plt.style.use('bmh') # use a style sheet
+plt.ion() # interactive mode to eliminnte plt.show later on
 
-
-def temp_kanger(t, warming=False, warming_shift=0.5): 
+def temp_kanger(t, warming_shift = 0): 
     '''
     For an array of times in days, return timeseries of temperature for Kangerlussuaq, Greenland.
 
@@ -19,32 +19,27 @@ def temp_kanger(t, warming=False, warming_shift=0.5):
     ----------
     t: time (array)
         Numpy array of times in days
-    warming: (bool, defaults to False)
-        Decides if a positive shift is added to the mean temperatures
+
     warming_shift: float (defaults to 0.5)
-        value to be added to mean temperatures in degrees Celsius if Warming == True
+        value to be added to mean temperatures in degrees Celsius
 
     Returns
     -------
-
     '''
     # Kangerlussuaq average temperature:
     t_kanger = np.array([-19.7, -21.0, -17., -8.4, 2.3, 8.4,
                         10.7, 8.5, 3.1, -6.0, -12.0, -16.9])
 
-    t_amp = (t_kanger - t_kanger.mean()).max()
+    t_amp = (t_kanger - t_kanger.mean()).max() # amplitude of seasonal variation
 
-    curve = t_amp*np.sin(np.pi/180 * t - np.pi/2) + t_kanger.mean()
+    curve = t_amp*np.sin(np.pi/180 * t - np.pi/2) + t_kanger.mean() # Calculate daily changing temperatures
 
-    # Add a warming shift if applicable
-    if warming == True:
-        curve = curve + warming_shift
+    curve = curve + warming_shift # add the warming
 
-    return curve
+    return curve # return the array of temperature for boundary conditions
 
 
-def heatdiff(xmax, tmax, dx, dt, c2=1, conditions = 'permafrost', warming=False, 
-             warming_shift=0.5, debug=True):
+def heatdiff(xmax, tmax, dx, dt, c2=1, conditions = 'permafrost', warming_shift = 0.5, debug = True):
     '''
     This function solves the heat equation and returns solution plus time and
     space arrays. Can be used to solve permafrost problem or wire problem
@@ -65,8 +60,6 @@ def heatdiff(xmax, tmax, dx, dt, c2=1, conditions = 'permafrost', warming=False,
     conditions: str, defaults to 'permafrost'
         Determines initial/boundary conditions to be used. Must be selected
         'permafrost' or 'wire'
-    warming: bool, defaults to False:
-        Decides if a positive shift is added to the mean temperatures
     warming_shift: float, defaults to 0.5
         value to be added to mean temperatures in degrees Celsius if Warming == True
     debug: bool, defaults to True
@@ -108,7 +101,7 @@ def heatdiff(xmax, tmax, dx, dt, c2=1, conditions = 'permafrost', warming=False,
     # Set initial/boundary conditions depending on problem:
     if conditions == 'permafrost':
         # Set boundary conditions:
-        U[0, :] = temp_kanger(tgrid,warming=warming, warming_shift=warming_shift)
+        U[0, :] = temp_kanger(tgrid, warming_shift = warming_shift)
         U[-1, :] = 5
 
     elif conditions == 'wire':
@@ -131,11 +124,12 @@ def heatdiff(xmax, tmax, dx, dt, c2=1, conditions = 'permafrost', warming=False,
         # print change of temp in last year
         change_U = U[21:51,-1] - U[21:51,-2] #look at depths between 20 and 50 meters
         max_change = np.max(np.abs(change_U))
-        index = np.where((change_U == max_change) | (change_U == -max_change))[0]
-        print(f'the maximum change is {max_change} and it occurs at depth {(index+21)*dx}')
+        index = np.where((change_U == max_change) | (change_U == -max_change))[0][0]
+        print(f'the maximum change is {max_change}\u00B0C and it occurs at depth {(index+21)*dx}m')
 
     if debug == True:
         print(f'surface temperatures: {U[0,:]}')
+
     # Return grid and result:
     return xgrid, tgrid, U
 
@@ -156,12 +150,11 @@ def plot_wire():
     ax.set_xlabel('Time [s]')
     ax.set_ylabel('Length [m]')
     ax.set_title('Temperature Distribution of Wire in Time')
-    plt.show()
 
 # Uncomment for figure 1:
 # plot_wire()
 
-def plot_greenland(y,tick_interval, warming=False, warming_shift=0.5):
+def plot_greenland(y, tick_interval, warming_shift=0.5):
     '''
     Plots heat map for Greenland as well as temperature profile of permafrost.
     (figure 2-5 in report)
@@ -186,13 +179,14 @@ def plot_greenland(y,tick_interval, warming=False, warming_shift=0.5):
     c2 = 0.25 * (1/1000)**2 * (86400) # 0.25 mm^2/s covert to m^2/days
 
     x, t, heat = heatdiff(xmax=xmax, tmax=tmax, dx=dx, dt=dt, c2=c2, conditions='permafrost', 
-                              debug=False, warming=warming, warming_shift=warming_shift)
+                              debug=False, warming_shift=warming_shift)
 
     # Create a figure/axes object
     fig, ax = plt.subplots(1, 1)
+
     # Create a color map and add a color bar
     map = ax.pcolor(t, x, heat, cmap='seismic', vmin=-25, vmax=25)
-    plt.colorbar(map, ax=ax, label='Temperature ($C$)')
+    plt.colorbar(map, ax=ax, label = 'Temperature [\u00B0C]')
 
     # Sets locations and labels of ticks so that they do not appear every year \
     # and looks cluttered
@@ -200,13 +194,11 @@ def plot_greenland(y,tick_interval, warming=False, warming_shift=0.5):
     position_xticks = [tick_interval * i for i in range(y // (tick_interval // 365) + 1)]
     ax.set_xticks(position_xticks)
     ax.set_xticklabels([str(i * (tick_interval // 365)) for i in range(y // (tick_interval // 365) + 1)])
+    
     ax.set_xlabel('Years')
-
     ax.set_ylabel('Depth [m]')
     ax.set_title("Ground Temperature: Kangerlussuaq")
-
-    # Invert y_axis
-    plt.gca().invert_yaxis()
+    ax.invert_yaxis()
 
     # Set indexing for the final year of results:
     loc = int(-365/dt) # Final 365 days of the result
@@ -220,12 +212,11 @@ def plot_greenland(y,tick_interval, warming=False, warming_shift=0.5):
     fig2, ax2 = plt.subplots(1,1)
     ax2.plot(winter, x, label='winter')
     ax2.plot(summer,x, label='summer')
-    ax2.set_xlabel('Temperature [C]')
+    ax2.set_xlabel('Temperature [\u00B0C]')
     ax2.set_ylabel('Depth [m]')
     ax2.set_title('Ground Temperature: Kangerlussuaq')
+    ax2.invert_yaxis()
     fig2.legend()
-
-    plt.gca().invert_yaxis()
     plt.show()
 
 # Uncomment for figure 2-5:
@@ -251,90 +242,105 @@ def warming(y, warming_shift=0.5):
         value to be added to mean temperatures in degrees Celsius if Warming == True
     '''
     xmax = 100 # 100 meters
-    y = y
+
     #tick_interval = tick_interval # 1 year
     tmax = 365*y
     dx=0.2
     dt=0.5
     c2 = 0.25 * (1/1000)**2 * (86400) # 0.25 mm^2/s covert to m^2/days
 
-    # Normal plot:
+    # Call the diffusion function:
     x, t, heat = heatdiff(xmax=xmax, tmax=tmax, dx=dx, dt=dt, c2=c2, conditions='permafrost', 
-                              debug=False, warming=False)
-    # Warming plot:
+                              debug=False, warming_shift = 0)
+    
     x_w, t_w, heat_w = heatdiff(xmax=xmax, tmax=tmax, dx=dx, dt=dt, c2=c2, conditions='permafrost', 
-                              debug=False, warming=True, warming_shift=warming_shift)
+                              debug=False, warming_shift = warming_shift)
 
     # Set indexing for the final year of results:
     loc = int(-365/dt) # Final 365 days of the result
 
-    # Extract the min values over final year
-    # Normal
-    winter = heat[:,loc:].min(axis=1) # axis=1 is horizontal axis
+    # Extract the min values over final year in absence of climate change
+    winter = heat[:,loc:].min(axis=1) # axis = 1 is horizontal axis
     summer = heat[:,loc:].max(axis=1)
-    change = summer - winter
-    # warming:
-    winter_w = heat_w[:,loc:].min(axis=1) # axis=1 is horizontal axis
-    summer_w = heat_w[:,loc:].max(axis=1)
-    change_w = summer_w - winter_w
 
-    #find at what depth does ground starts to freeze in summer (active layer)
-    # and where permafrost layer ends (temp goes above 0 again)
-    #normal conditions:
+    # Extract the min values over final year for warming scenario
+    winter_w = heat_w[:,loc:].min(axis=1) # axis = 1 is horizontal axis
+    summer_w = heat_w[:,loc:].max(axis=1)
+
+    # find at what depth does ground starts to freeze in summer (end of active layer)
+    # and where permafrost layer ends (temp goes above 0 again deep in ground)
+
+    # normal conditions:
     # find end of active layer:
     frozen = summer < 0
-    frozen_depth = np.where(frozen==True)
-    print(f'ground starts to freeze at: {frozen_depth[0][0]*dx} meters')
+    perm_top = x[np.where(frozen==True)[0][0]]
+
     # find end of permafrost layer:
-    thaw = winter > 0
-    thaw_depth = np.where(thaw == True)
-    print(f'temp goes above 0 at {thaw_depth[0][0]*dx} meters')
-    print(f'permafrost layer length: {thaw_depth[0][0]*dx - frozen_depth[0][0]*dx}')
+    thawed = winter > 0
+    perm_base = x[np.where(thawed == True)[0][0]]
+    perm_depth = perm_base - perm_top
 
     # warming conditions:
     # find end of active layer (start of permafrost):
     frozen_w = summer_w < 0
-    frozen_depth_w = np.where(frozen_w==True)
-    print(f'when warmed by {warming_shift} deg, ground starts to freeze at: {frozen_depth_w[0][0]*dx} meters')
+    perm_top_w = x[np.where(frozen_w==True)[0][0]]
+
     # find end of permafrost layer:
-    thaw_w = winter_w > 0
-    thaw_depth_w = np.where(thaw_w == True)
-    print(f'temp goes above 0 at {thaw_depth_w[0][0]*dx} meters')
-    print(f'permafrost layer length after warming:\
-          {thaw_depth_w[0][0]*dx - frozen_depth_w[0][0]*dx}')
+    thawed_w = winter_w > 0
+    perm_base_w = x[np.where(thawed_w == True)[0][0]]
+    perm_depth_w = perm_base_w - perm_top_w
     
-    # change of permafrost after warming: positive meand shrinking
-    print(f'warming by {warming_shift} deg changed permafrost layer by:\
-          {(thaw_depth[0][0]*dx - frozen_depth[0][0]*dx) - (thaw_depth_w[0][0]*dx - frozen_depth_w[0][0]*dx)}')
+    # change of permafrost after warming: negative value represents a decrease with warming
+    print(f'Surface warming by {warming_shift}\u00B0C changed permafrost extent by: {perm_depth_w - perm_depth}m')
 
-    #temp profiles for summer and winter
-    # plot normal conditions
-    fig, axes = plt.subplots(1,2)
+    # temp profiles for summer and winter
+    # plot normal conditions on first subplot
+    fig, ax = plt.subplots(1,2, figsize = (16, 10))
 
-    for ax in axes:
+    #Plot the summer and winter temperature curves under a non-warming scenario
+    ax[0].plot(winter, x, label = 'winter')
+    ax[0].plot(summer, x, label = 'summer')
 
-        ax.plot(winter, x, label='winter')
-        ax.plot(summer,x, label='summer')
-        ax.axhline(y=x[frozen_depth[0][0]], color='black', linestyle='dashed')
-        ax.axhline(y=x[thaw_depth[0][0]], linestyle='dashed', color='black')
-        ax.text(1, x[frozen_depth[0][0]]+6, f'''Start Permafrost layer:
-                    {frozen_depth[0][0]*dx:.2f} m''')
-        ax.text(1, x[thaw_depth[0][0]]+6, f'''End Permafrost layer:
-                {thaw_depth[0][0]*dx:.2f} m''')
-        ax.set_xlabel('Temperature [C]')
-        ax.set_ylabel('Depth [m]')
-        ax.invert_yaxis() 
+    #Plot horizonal lines at the top and base of the permafrost
+    ax[0].axhline(y = perm_top, color='black', linestyle='dashed')
+    ax[0].axhline(y = perm_base, linestyle='dashed', color='black')
+    limits = ax[0].set_xlim([winter.min() - 2, summer.max() + 2]) # set limits based on temperature range
 
-    axes[0].set_title('Ground Temperature (Normal Conditions)')
-    axes[1].set_title(f'Ground Temperature (Warmer by {warming_shift} deg)')
+    # Fill the area between the top and bottom to shade the permafrost layer
+    ax[0].fill_between(limits, perm_top, perm_base, color = 'deepskyblue', alpha = 0.5, # fill between the lines
+                    label = f"Permafrost: top = {round(perm_top, 1)}m, " 
+                    f"base = {round(perm_base, 1)}m, thickness = {round(perm_depth, 1)}m")
+    
+    # labels, title, legend, invert y-axis
+    ax[0].set_xlabel('Temperature [\u00B0C]')
+    ax[0].set_ylabel('Depth [m]')
+    ax[0].set_title('Ground Temperature (Normal Conditions)')
+    ax[0].legend(loc = 'lower left', frameon = True, fontsize = 10)
+    ax[0].invert_yaxis() 
 
-    fig.legend()
+    # Now plot the warming scenario in the second subplot. Start with the temperature curves
+    ax[1].plot(winter, x, label='winter')
+    ax[1].plot(summer,x, label='summer')
+    limits_w = ax[1].set_xlim([winter_w.min() - 2, summer_w.max() + 2]) # set limits based on temperature range
 
-    plt.show()
+    # Plot horizontal lines at top and base of the permaforst
+    ax[1].axhline(y = perm_top_w, color='black', linestyle='dashed')
+    ax[1].axhline(y = perm_base_w, linestyle='dashed', color='black')
 
+    # Fill the area between the top and bottom to shade the permafrost layer
+    ax[1].fill_between(limits_w, perm_top_w, perm_base_w, color = 'deepskyblue', alpha = 0.5, # fill between the lines
+                    label = f"Permafrost: top = {round(perm_top_w, 1)}m, " 
+                    f"base = {round(perm_base_w, 1)}m, thickness = {round(perm_depth_w, 1)}m")
+   
+    # labels, title, legend, invert y-axis
+    ax[1].set_xlabel('Temperature [\u00B0C]')
+    ax[1].set_ylabel('Depth [m]')
+    ax[1].set_title(f'Ground Temperature ({warming_shift}\u00B0C Surface Warming)')
+    ax[1].legend(loc = 'lower left', frameon = True, fontsize = 10)
+    ax[1].invert_yaxis() 
 
 # Uncomment for figure 6-8
 
 warming(50, warming_shift=3)
-# warming(50, warming_shift=1)
-# warming(50, warming_shift=0.5)
+#warming(50, warming_shift=1)
+#warming(50, warming_shift=0.5)
