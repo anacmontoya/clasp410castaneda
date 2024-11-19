@@ -15,9 +15,6 @@ mxdlyr = 50.         # depth of mixed layer (m)
 sigma = 5.67e-8      # Steffan-Boltzman constant
 C = 4.2e6            # Heat capacity of water
 rho = 1020           # Density of sea-water (kg/m^3)
-# epsilon = 1          # Emissivity of blackbody
-albedo_ice = 0.6
-albedo_gnd = 0.3
 
 
 def gen_grid(nbins=18):
@@ -128,9 +125,9 @@ def insolation(S0, lats):
 
     return insolation
 
-def snowball_earth(nbins=18, dt=1., tstop=10000, lam=100., epsilon = 1,
-                   spherecorr=True, albedo=0.3, S0=1370,
-                   dynamic_alb=False, debug=False):
+
+def snowball_earth(nbins=18, dt=1., tstop=10000, lam=100., spherecorr=True,
+                   debug=False, albedo=0.3, emiss=1, S0=1370):
     '''
     Perform snowball earth simulation.
 
@@ -149,6 +146,13 @@ def snowball_earth(nbins=18, dt=1., tstop=10000, lam=100., epsilon = 1,
         true except for testing purposes.
     debug : bool, defaults to False
         Turn  on or off debug print statements.
+    albedo : float, defaults to 0.3
+        Set the Earth's albedo.
+    emiss : float, defaults to 1.0
+        Set ground emissivity. Set to zero to turn off radiative cooling.
+    S0 : float, defaults to 1370
+        Set incoming solar forcing constant. Change to zero to turn off
+        insolation.
 
     Returns
     -------
@@ -157,7 +161,6 @@ def snowball_earth(nbins=18, dt=1., tstop=10000, lam=100., epsilon = 1,
     Temp : Numpy array
         Final temperature as a function of latitude.
     '''
-
     # Get time step in seconds:
     dt_sec = 365 * 24 * 3600 * dt  # Years to seconds.
 
@@ -222,29 +225,13 @@ def snowball_earth(nbins=18, dt=1., tstop=10000, lam=100., epsilon = 1,
         # Add spherical correction term:
         if spherecorr:
             Temp += dt_sec * lam * dAxz * np.matmul(B, Temp)
-            if debug:
-                print(f'Temp after sphere corr: {Temp}')
 
         # Apply insolation and radiative losses:
-        if dynamic_alb:
-            loc_ice = Temp <= -10
-            albedo = np.zeros_like(Temp)
-            albedo[loc_ice] = albedo_ice
-            albedo[~loc_ice] = albedo_gnd
-            #set radiative variable here?
-
-        radiative = (1-albedo) * insol - epsilon*sigma*(Temp+273.15)**4
+        # print('T before insolation:', Temp)
+        radiative = (1-albedo) * insol - emiss*sigma*(Temp+273.15)**4
+        # print('\t Rad term = ', dt_sec * radiative / (rho*C*mxdlyr))
         Temp += dt_sec * radiative / (rho*C*mxdlyr)
-        
-        # if insol:
-        #     # Update albedo based on conditions if it is dynamic:
-        #     if dynamic_alb:
-        #         loc_ice = Temp <= -10
-        #         albedo = np.zeros_like(Temp)
-        #         albedo[loc_ice] = albedo_ice
-        #         albedo[~loc_ice] = albedo_gnd
-        #     ins = (dt_sec/(rho*C*mxdlyr)) * (insolation(lats)*(1-albedo)-epsilon*sigma*(Temp+273.15)**4)
-        #     Temp += ins
+        # print('\t T after rad:', Temp)
 
         Temp = np.matmul(L_inv, Temp)
 
@@ -272,14 +259,13 @@ def test_snowball(tstop=10000):
     initial = temp_warm(lats)
 
     # Get simple diffusion solution:
-    lats, t_diff = snowball_earth(tstop=tstop, spherecorr=False, 
-                                  S0=0, epsilon=0)
+    lats, t_diff = snowball_earth(tstop=tstop, spherecorr=False, S0=0, emiss=0)
 
     # Get diffusion + spherical correction:
-    lats, t_sphe = snowball_earth(tstop=tstop, S0=0, epsilon=0)
+    lats, t_sphe = snowball_earth(tstop=tstop, S0=0, emiss=0)
 
-    # Get diff + spher corr + insolation
-    lats, t_ins =  snowball_earth(tstop=tstop)
+    # Get diffusion + sphercorr + radiative terms:
+    lats, t_rad = snowball_earth(tstop=tstop)
 
     # Create figure and plot!
     fig, ax = plt.subplots(1, 1, figsize=(8, 6))
@@ -287,7 +273,7 @@ def test_snowball(tstop=10000):
     ax.plot(lats, initial, label='Warm Earth Init. Cond.')
     ax.plot(lats, t_diff, label='Simple Diffusion')
     ax.plot(lats, t_sphe, label='Diffusion + Sphere. Corr.')
-    ax.plot(lats, t_ins, label='Diff + Spherec Corr. + Insolation')
+    ax.plot(lats, t_rad, label='Diffusion + Sphere. Corr. + Radiative')
 
     ax.set_xlabel('Latitude (0=South Pole)')
     ax.set_ylabel('Temperature ($^{\circ} C$)')
@@ -295,116 +281,7 @@ def test_snowball(tstop=10000):
     ax.legend(loc='best')
 
     fig.tight_layout()
-
-
-#test_snowball()
-
-def vary_epsilon():
-    tstop = 10000
-    emiss_array1 = np.linspace(0,1, 5) # plot some values to see general behavior as epsilon changes
-    emiss_array2 = np.linspace(0.65,0.75,10) # values chosen after deciding a general range for epsilon
-
-    # Generate grid:
-    dlat, lats = gen_grid(18)
-    # Create initial condition:
-    initial = temp_warm(lats)
-
-
-    fig, ax = plt. subplots(1,1)
-    # plot initial conditions
-    ax.plot(lats, initial, label='initial')
-
-    # Plot temperatures for range of epsilon:
-    for i in range(len(emiss_array1)):
-        lats, temps = snowball_earth(tstop=tstop, epsilon=emiss_array1[i])
-        ax.plot(lats, temps, label=f'$\\epsilon = {emiss_array1[i]}$')
-        ax.set_xlabel('Latitude (0=South Pole)')
-        ax.set_ylabel('Temperature ($^{\circ} C$)')
-
-    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))  # Legend outside top-right
-
-
-    # Empty Delta T array
-    # Warm Earth temp - modeled temp:
-    delta_T_eq = np.zeros_like(emiss_array2) # Equator
-    delta_T_SP = np.zeros_like(emiss_array2) # South Pole
-    delta_T_NP = np.zeros_like(emiss_array2) # North Pole
-
-    for i in range(len(emiss_array2)):
-        # compare values around equator (lat=85)
-        lats, temps = snowball_earth(tstop=tstop, epsilon=emiss_array2[i])
-        ind_eq = np.where(lats==85)[0][0]
-        # Populate Delta T:
-        delta_T_eq[i] = initial[ind_eq] - temps[ind_eq]
-        delta_T_SP[i] = initial[0] - temps[0]
-        delta_T_NP[i] = initial[-1] - temps[-1]
-
-    fig2, ax2 = plt.subplots(1,1)
-    ax2.plot(emiss_array2, delta_T_eq, label='Equator')
-    ax2.plot(emiss_array2, delta_T_SP, label='South Pole')
-    ax2.plot(emiss_array2, delta_T_NP, label='North Pole')
-    ax2.set_xlabel('Emissivity ($\\epsilon$)')
-    ax2.set_ylabel(r'$\Delta T$ (°C)')
-    ax2.set_title('Warm Earth - Modeled Temperature', fontsize='medium')
-    ax2.legend()
-
+    
     plt.show()
-
-#vary_epsilon()
-
-def vary_lambda(plot1_start, plot1_end, plot2_start, plot2_end):
-    tstop = 10000
-    lam_array1 = np.linspace(plot1_start,plot1_end, 5) # plot some values to see general behavior as epsilon changes
-    lam_array2 = np.linspace(plot2_start,plot2_end,10) # values chosen after deciding a general range for epsilon
-
-    # Generate grid:
-    dlat, lats = gen_grid(18)
-    # Create initial condition:
-    initial = temp_warm(lats)
-
-
-    fig, ax = plt. subplots(1,1)
-    # plot initial conditions
-    ax.plot(lats, initial, label='initial', linestyle='dashed')
-
-    # Plot temperatures for range of epsilon:
-    for i in range(len(lam_array1)):
-        lats, temps = snowball_earth(tstop=tstop, lam=lam_array1[i], epsilon=0.7)
-        ax.plot(lats, temps, label=f'$\\lambda = {lam_array1[i]}$')
-        ax.set_xlabel('Latitude (0=South Pole)')
-        ax.set_ylabel('Temperature ($^{\circ} C$)')
-
-    ax.legend(loc='upper left', bbox_to_anchor=(1, 1))  # Legend outside top-right
-
-
-    # Empty Delta T array
-    # Warm Earth temp - modeled temp:
-    delta_T_eq = np.zeros_like(lam_array2) # Equator
-    delta_T_SP = np.zeros_like(lam_array2) # South Pole
-    delta_T_NP = np.zeros_like(lam_array2) # North Pole
-
-    for i in range(len(lam_array2)):
-        # compare values around equator (lat=85)
-        lats, temps = snowball_earth(tstop=tstop, lam=lam_array2[i], epsilon=0.7)
-        ind_eq = np.where(lats==85)[0][0]
-        # Populate Delta T:
-        delta_T_eq[i] = initial[ind_eq] - temps[ind_eq]
-        delta_T_SP[i] = initial[0] - temps[0]
-        delta_T_NP[i] = initial[-1] - temps[-1]
-
-    fig2, ax2 = plt.subplots(1,1)
-    ax2.plot(lam_array2, delta_T_eq, label='Equator')
-    ax2.plot(lam_array2, delta_T_SP, label='South Pole')
-    ax2.plot(lam_array2, delta_T_NP, label='North Pole')
-    ax2.set_xlabel('Diffusivity ($\\lambda$)')
-    ax2.set_ylabel(r'$\Delta T$ (°C)')
-    ax2.set_title('Warm Earth - Modeled Temperature', fontsize='medium')
-    ax2.legend()
-
-    plt.show()
-
-vary_lambda(0,50, 0,50)
-
-vary_lambda(50,100, 50,100)
-
-vary_lambda(100,150, 100,150)
+    
+test_snowball()
