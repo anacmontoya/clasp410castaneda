@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 
 '''
-Draft code for Lab 5: SNOWBALL EARTH!!!
+code for Lab 5: SNOWBALL EARTH.
+
+Uncomment lines at the end to reproduce report figures.
+Note: question2() function will return 8 figures but only
+5 were used in the report. Read docstring of function for
+list of used figures.
 '''
 
 import numpy as np
@@ -129,8 +134,8 @@ def insolation(S0, lats):
     return insolation
 
 def snowball_earth(nbins=18, dt=1., tstop=10000, lam=100., epsilon = 1,
-                   spherecorr=True, albedo=0.3, S0=1370,
-                   dynamic_alb=False, debug=False):
+                   spherecorr=True, albedo=0.3, S0=1370, initial_temp=None,
+                   gamma=1, dynamic_alb=False, debug=False):
     '''
     Perform snowball earth simulation.
 
@@ -144,9 +149,24 @@ def snowball_earth(nbins=18, dt=1., tstop=10000, lam=100., epsilon = 1,
         Stop time in years
     lam : float, defaults to 100
         Diffusion coefficient of ocean in m^2/s
+    epsilon: float, defaults to 1
+        Set ground emissivity. Set to zero to turn off radiative cooling
     spherecorr : bool, defaults to True
         Use the spherical coordinate correction term. This should always be
         true except for testing purposes.
+    albedo: float, defaults to 0.3
+        Set the Earth's albedo
+    S0: float, defaults to 1370
+        Set incoming solar forcing constant. Change to zero to turn off 
+        insolation
+    initial_temp: array, defaults to None
+        array used as the initial temperatures of each latitude point.
+        Must match length of latitude array returned by gen_grid(nbins)
+    gamma: float, defaults to 1
+        Solar multiplier. Scales insolation.
+    dynamic_alb: bool, defaults to False
+        Determines whether albedo is recalculated each step based on 
+        surface Temperature or is held constant.
     debug : bool, defaults to False
         Turn  on or off debug print statements.
 
@@ -168,12 +188,15 @@ def snowball_earth(nbins=18, dt=1., tstop=10000, lam=100., epsilon = 1,
     dy = radearth * np.pi * dlat / 180.
 
     # Generate insolation:
-    insol = insolation(S0, lats)
+    insol = gamma * insolation(S0, lats)
 
     # Create initial condition:
-    Temp = temp_warm(lats)
-    if debug:
-        print('Initial temp = ', Temp)
+    if initial_temp is None:
+        Temp = temp_warm(lats)
+    else:
+        if len(initial_temp) != nbins:
+            raise ValueError(f"initial_temp must have the same length as the number of latitude bins (nbins={nbins}).")
+        Temp = np.array(initial_temp)
 
     # Get number of timesteps:
     nstep = int(tstop / dt)
@@ -231,7 +254,12 @@ def snowball_earth(nbins=18, dt=1., tstop=10000, lam=100., epsilon = 1,
             albedo = np.zeros_like(Temp)
             albedo[loc_ice] = albedo_ice
             albedo[~loc_ice] = albedo_gnd
-            #set radiative variable here?
+            if debug:
+                print(f'Dynamic albedo updated: {albedo}')
+        else:
+            # Use the user-specified albedo value (default or provided)
+            if debug:
+                print(f"Using fixed albedo: {albedo}")
 
         radiative = (1-albedo) * insol - epsilon*sigma*(Temp+273.15)**4
         Temp += dt_sec * radiative / (rho*C*mxdlyr)
@@ -297,29 +325,40 @@ def test_snowball(tstop=10000):
     fig.tight_layout()
 
 
-#test_snowball()
+def vary_epsilon(lam=100):
+    '''
+    Plots temperature profiles and errors for different emissivities.
 
-def vary_epsilon():
+    Parameters
+    ----------
+    lam: float, defaults to 100
+        diffusivity (lambda) to be used in snowball_earth() function
+    '''
     tstop = 10000
     emiss_array1 = np.linspace(0,1, 5) # plot some values to see general behavior as epsilon changes
     emiss_array2 = np.linspace(0.65,0.75,10) # values chosen after deciding a general range for epsilon
 
+    nbins = 18
+
+    # Generate very simple grid
     # Generate grid:
-    dlat, lats = gen_grid(18)
+    dlat, lats = gen_grid(nbins)
+
     # Create initial condition:
     initial = temp_warm(lats)
 
-
     fig, ax = plt. subplots(1,1)
     # plot initial conditions
-    ax.plot(lats, initial, label='initial')
+    ax.plot(lats, initial, label='Initial', linestyle='dashed')
+
 
     # Plot temperatures for range of epsilon:
     for i in range(len(emiss_array1)):
-        lats, temps = snowball_earth(tstop=tstop, epsilon=emiss_array1[i])
+        lats, temps = snowball_earth(tstop=tstop, epsilon=emiss_array1[i], lam=lam)
         ax.plot(lats, temps, label=f'$\\epsilon = {emiss_array1[i]}$')
         ax.set_xlabel('Latitude (0=South Pole)')
         ax.set_ylabel('Temperature ($^{\circ} C$)')
+
 
     ax.legend(loc='upper left', bbox_to_anchor=(1, 1))  # Legend outside top-right
 
@@ -332,7 +371,7 @@ def vary_epsilon():
 
     for i in range(len(emiss_array2)):
         # compare values around equator (lat=85)
-        lats, temps = snowball_earth(tstop=tstop, epsilon=emiss_array2[i])
+        lats, temps = snowball_earth(tstop=tstop, epsilon=emiss_array2[i], lam=lam)
         ind_eq = np.where(lats==85)[0][0]
         # Populate Delta T:
         delta_T_eq[i] = initial[ind_eq] - temps[ind_eq]
@@ -350,12 +389,24 @@ def vary_epsilon():
 
     plt.show()
 
-#vary_epsilon()
 
-def vary_lambda(plot1_start, plot1_end, plot2_start, plot2_end):
+def vary_lambda(lam_array1, lam_array2, show_error=False):
+    '''
+    Plots temperature profiles and errors for different diffusivities.
+
+    Parameters
+    ----------
+    lam_array1: array
+        array of lambda values to be plotted in the temperature profile plot
+    lam_array2: array
+        array of lambda values to be plotted in the error plot
+    show_error: bool, defaults to False
+        determines if error for each lambda value in array 2 must be calculated
+        and printed to screen
+    '''
     tstop = 10000
-    lam_array1 = np.linspace(plot1_start,plot1_end, 5) # plot some values to see general behavior as epsilon changes
-    lam_array2 = np.linspace(plot2_start,plot2_end,10) # values chosen after deciding a general range for epsilon
+    #lam_array1 = np.linspace(range_start,range_end, 5) # plot some values to see general behavior as epsilon changes
+    #lam_array2 = np.linspace(range_start,range_end,10) # values chosen after deciding a general range for epsilon
 
     # Generate grid:
     dlat, lats = gen_grid(18)
@@ -365,7 +416,7 @@ def vary_lambda(plot1_start, plot1_end, plot2_start, plot2_end):
 
     fig, ax = plt. subplots(1,1)
     # plot initial conditions
-    ax.plot(lats, initial, label='initial', linestyle='dashed')
+    # ax.plot(lats, initial, label='initial', linestyle='dashed')
 
     # Plot temperatures for range of epsilon:
     for i in range(len(lam_array1)):
@@ -373,7 +424,12 @@ def vary_lambda(plot1_start, plot1_end, plot2_start, plot2_end):
         ax.plot(lats, temps, label=f'$\\lambda = {lam_array1[i]}$')
         ax.set_xlabel('Latitude (0=South Pole)')
         ax.set_ylabel('Temperature ($^{\circ} C$)')
+        error = initial - temps
+        avg_error = np.mean(error)
+        if show_error:
+            print(f'average error for lambda={lam_array1[i]}: {avg_error}')
 
+    ax.plot(lats, initial, label='initial', linestyle='dashed')
     ax.legend(loc='upper left', bbox_to_anchor=(1, 1))  # Legend outside top-right
 
 
@@ -391,7 +447,6 @@ def vary_lambda(plot1_start, plot1_end, plot2_start, plot2_end):
         delta_T_eq[i] = initial[ind_eq] - temps[ind_eq]
         delta_T_SP[i] = initial[0] - temps[0]
         delta_T_NP[i] = initial[-1] - temps[-1]
-
     fig2, ax2 = plt.subplots(1,1)
     ax2.plot(lam_array2, delta_T_eq, label='Equator')
     ax2.plot(lam_array2, delta_T_SP, label='South Pole')
@@ -403,8 +458,172 @@ def vary_lambda(plot1_start, plot1_end, plot2_start, plot2_end):
 
     plt.show()
 
-vary_lambda(0,50, 0,50)
+def hot_earth():
+    '''
+    Plots temperature profiles for a hot earth scenario. Simulations are run for 
+    three different durations.
+    '''
+    hot_temp = np.full(18, 60, dtype=float)
+    lats, temps_5k = snowball_earth(tstop=5000, lam=22., epsilon = 0.7, initial_temp=hot_temp,
+                    dynamic_alb=True, debug=False)
+    lats, temps_10k = snowball_earth(tstop=10000, lam=22., epsilon = 0.7, initial_temp=hot_temp,
+                    dynamic_alb=True, debug=False)
+    lats, temps_20k = snowball_earth(tstop=20000, lam=22., epsilon = 0.7, initial_temp=hot_temp,
+                    dynamic_alb=True, debug=False)
+    
+    # Warm earth equilibrium for reference. Use same Eps and Lam values and dyn. albedo
+    lats, t_warm =  snowball_earth(dynamic_alb=True, epsilon=0.7, lam=22.)
 
-vary_lambda(50,100, 50,100)
 
-vary_lambda(100,150, 100,150)
+    fig, ax = plt.subplots(1,1)
+    # ax.plot(lats, hot_temp, label='Initial')
+    ax.plot(lats, temps_5k, label='5,000 yrs')
+    ax.plot(lats, temps_10k, label='10,000 yrs')
+    ax.plot(lats, temps_20k, label='20,000 yrs')
+    ax.plot(lats, t_warm, label='Warm Earth Equilib.')
+    ax.set_xlabel('Latitude (0=South Pole)')
+    ax.set_ylabel('Temperature ($^{\circ} C$)')
+    ax.set_title('''Temperature Equilibrium of "Hot Earth"
+                 (all lats = 60 C)''', fontsize='medium')
+    ax.legend()
+    plt.show()
+
+
+def cold_earth():
+    '''
+    Plots temperature profiles for a cold earth scenario. Simulations are run for 
+    three different durations.
+    '''
+    cold_temp = np.full(18, -60, dtype=float)
+    # lats, temps_5k = snowball_earth(tstop=5000, lam=22., epsilon = 0.7, initial_temp=cold_temp,
+    #                 dynamic_alb=True, debug=False)
+    lats, temps_10k = snowball_earth(tstop=10000, lam=22., epsilon = 0.7, initial_temp=cold_temp,
+                    dynamic_alb=True, debug=False)
+    lats, temps_20k = snowball_earth(tstop=20000, lam=22., epsilon = 0.7, initial_temp=cold_temp,
+                    dynamic_alb=True, debug=False)
+    lats, temps_40k = snowball_earth(tstop=40000, lam=22., epsilon = 0.7, initial_temp=cold_temp,
+                    dynamic_alb=True, debug=False)
+    
+    # Warm earth equilibrium for reference. Use same Eps and Lam values and dyn. albedo
+    lats, t_warm =  snowball_earth(dynamic_alb=True, epsilon=0.7, lam=22.)
+
+    fig, ax = plt.subplots(1,1)
+    # ax.plot(lats, cold_temp, label='Initial')
+    # ax.plot(lats, temps_5k, label='5,000 yrs')
+    ax.plot(lats, temps_10k, label='10,000 yrs')
+    ax.plot(lats, temps_20k, label='20,000 yrs')
+    ax.plot(lats, temps_40k, label='40,000 yrs')
+    ax.plot(lats, t_warm, label='Warm Earth Equilib.')
+    ax.set_xlabel('Latitude (0=South Pole)')
+    ax.set_ylabel('Temperature ($^{\circ} C$)')
+    ax.set_title('''Temperature Equilibrium of "Cold Earth"
+                 (all lats = -60 C)''', fontsize='medium')
+    ax.legend()
+    plt.show()
+
+def flash_freeze():
+    '''
+    Plots temperature profiles for a flash freeze earth scenario. Simulations are run for 
+    three different durations.
+    '''
+    lats, temps = snowball_earth(tstop=10000, lam=22., epsilon = 0.7, albedo=0.6,
+                    dynamic_alb=False, debug=False)
+    # Warm earth equilibrium for reference. Use same Eps and Lam values and dyn. albedo
+    lats, t_warm =  snowball_earth(dynamic_alb=True, epsilon=0.7, lam=22.)
+    
+    dlat, lats = gen_grid(18)
+    # Create initial condition:
+    initial = temp_warm(lats)
+
+    fig, ax = plt.subplots(1,1)
+    ax.plot(lats, initial, label='Initial')
+    ax.plot(lats, t_warm, label='Warm Earth Equilib.')
+    ax.plot(lats, temps, label='Flash Freeze Equilib.')
+    ax.set_xlabel('Latitude (0=South Pole)')
+    ax.set_ylabel('Temperature ($^{\circ} C$)')
+    ax.set_title('Temperature Equilibrium of "Flash-Freeze Earth"',
+                 fontsize='medium')
+    ax.legend()
+    plt.show()
+
+def vary_gamma():
+    '''
+    Plot of global average temperature vs gamma
+    '''
+    gammas1 = np.arange(0.4,1.4,0.05)
+    gammas2 = np.arange(1.4, 0.35, -0.05)
+    # Append the arrays
+    gamma = np.append(gammas1, gammas2)
+    global_temp = np.zeros_like(gamma)
+    # global_temp_warm
+    dlat, lats = gen_grid(18)
+    initial = np.full(18, -60, dtype=float) # cold Earth temps.
+    #test_gamma = np.array((0.4,0.9,1.4,0.9,0.4))
+    for i in range(len(gamma)):
+        # print(f'calculating temps for gamma = {test_gamma[i]}:')
+        # print(f'initial conditions are: {initial}')
+        lats, temps = snowball_earth(tstop=20000, lam=22., epsilon=0.7,
+                                    dynamic_alb=True, gamma=gamma[i], initial_temp=initial)
+        # print(f'temperatures = {temps}')
+        initial = temps.copy()
+        global_temp[i] = np.mean(temps)
+        # print(f'average global temp = {global_temp[i]}')
+    #global temps of warm earth with varying gamma?
+    fig, ax = plt.subplots(1,1)
+    ax.plot(gamma[:21], global_temp[:21], label=r'Increasing $\gamma$')
+    ax.plot(gamma[21:], global_temp[21:], label=r'Decreasing $\gamma$')
+    ax.set_xlabel(r'$\gamma$')
+    ax.set_ylabel('Average Global Temperature (C)')
+    ax.legend()
+    plt.show()
+
+
+def question1():
+    '''
+    Reproduces figure 1 from report.
+    '''
+    test_snowball()
+
+
+def question2():
+    '''
+    Reproduces figures 2, 3, 4, [unused figure], [unused figure], 
+    5a, 5b, [unused figure] in that order.
+    '''
+    vary_epsilon()
+
+    #General range of lambda:
+    lam_array1 = np.linspace(0,150,5)
+    lam_array2 = np.linspace(0,150,15)
+
+    vary_lambda(lam_array1=lam_array1, lam_array2=lam_array2)
+    
+    # 15-30 range:
+    lam_array1 = np.linspace(15,30,5)
+    lam_array2 = np.linspace(15,30,15)
+    
+    vary_lambda(lam_array1=lam_array1, lam_array2=lam_array2) #NP=18, SP=26
+    
+    
+    mean = np.mean((18,26))
+    vary_lambda(np.array((18,mean,26)), np.array((18,mean,26)), show_error=True) #avg has smalles avg error
+
+def question3():
+    '''
+    Reproduces figures 6,7 and 8 from the report
+    '''
+    hot_earth()
+    cold_earth()
+    flash_freeze()
+
+def question4():
+    '''Reproduces figure 9 from report'''
+    vary_gamma()
+
+
+# Uncomment for report figures:
+
+# question1()
+# question2()
+# question3()
+# question4()
